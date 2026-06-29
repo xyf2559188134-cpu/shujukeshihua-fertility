@@ -126,6 +126,10 @@
   @media(max-width:899px){
     #sc_teen .scrolly-graphic, #sc_decline .scrolly-graphic, #sc_sex .scrolly-graphic, #sc_newcharts .scrolly-graphic{position:relative;}
     #sc_teen .gfx, #sc_decline .gfx, #sc_sex .gfx, #sc_newcharts .gfx{opacity:1!important;margin-bottom:18px;}
+    /* 移动端通用：图区随内容流动不粘顶，图表给更高可视高度，避免被压扁 */
+    .scrolly-graphic{position:relative;}
+    .scrolly-graphic .chart{height:60vh; min-height:360px;}
+    #c_teenu{height:82vh; min-height:560px;}   /* 城乡哑铃图 32 行，需更高 */
   }
   /* 非活动层确实淡出（纯透明度，无模糊/缩放/位移）。:not(.on) 比基础规则优先级高，确保被切走的图真正隐藏 */
   @media(min-width:900px){
@@ -510,6 +514,9 @@ window.CHINA_GEOJSON = {"type":"FeatureCollection","features":[{"type":"Feature"
 <script>
 var INK="#f5dfc9", LINE="#f7a0bd", MUTED="rgba(245,223,201,.62)", FAINT="rgba(245,223,201,.22)", BG="#040712", PAPER="rgba(12,16,38,.85)";
 var SANS='-apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+/* 移动端适配：窄屏(<900px，与单栏布局断点一致)时各图改用紧凑布局；跨断点时重渲染 */
+function isMob(){ return window.innerWidth < 900; }
+var __bpHooks=[], __wasMob=isMob();
 /* 统一深色悬浮标签：玻璃底 + 发光圆点行（颜色取自各自系列，绝不串色）*/
 var TT_STYLE={backgroundColor:"rgba(12,16,38,.94)",borderColor:"rgba(245,223,201,.18)",borderWidth:1,
   padding:[10,13],textStyle:{color:"#f5dfc9",fontFamily:SANS,fontSize:13},
@@ -524,9 +531,10 @@ var P5_MAL="#8fb6d0", P5_FEM="#ef9a72", P5_ALERT="#ff7aa9", P5_TAN=["#d8c8b0","#
 function srbGapOption(step){
   var ns=window.DATA.national_sex, boys=ns.born_m*10, gAct=ns.born_f*10, gExp=boys/1.05;
   var YI=1e8, yi=function(v){return +(v/YI).toFixed(3);}, fy=function(v){return (v/YI).toFixed(2)+'亿';}, missWan=Math.round((gExp-gAct)/1e4);
+  var MOB=isMob();
   return {
     backgroundColor:"transparent", textStyle:{fontFamily:SANS}, animationDuration:700, animationDurationUpdate:500,
-    grid:{left:64,right:120,top:38,bottom:26},
+    grid:{left:MOB?50:64,right:MOB?74:120,top:38,bottom:26},
     xAxis:{type:"value", max:Math.ceil(yi(boys)*10)/10+0.15, axisLine:{show:false}, axisTick:{show:false},
       axisLabel:{color:MUTED, formatter:function(v){return v+"亿";}}, splitLine:{lineStyle:{color:"rgba(245,223,201,.10)"}}},
     yAxis:{type:"category", data:["男孩","女孩"], inverse:true, axisLine:{lineStyle:{color:FAINT}}, axisTick:{show:false},
@@ -586,6 +594,7 @@ var P5ring=(window.DATA&&window.DATA.parity_srb)?[
   {m:DATA.parity_srb.p2.m,f:DATA.parity_srb.p2.f},
   {m:DATA.parity_srb.p3.m,f:DATA.parity_srb.p3.f}]:null;
 function ringOption(step){
+  var MOB=isMob();
   var P=P5ring, names=["一孩","二孩","三孩及以上"], total=0; P.forEach(function(p){total+=p.m+p.f;});
   var BD=PAPER;
   var RING_OUT=["#cdb6ee","#b598e2","#9c7ad4"], RING_M="#8fb6d0", RING_F="#ef9a72";   // 外环：紫色梯度（替换原金棕，融入宇宙色系）
@@ -619,11 +628,11 @@ function ringOption(step){
       if(p.seriesName==="性别") return (p.data.par||"")+" · "+p.name+"：约 "+(p.value*10/1e4).toFixed(0)+" 万";
       return ""; }},
     series:[
-      {name:"孩次", type:"pie", radius:["46%","64%"], center:["50%","50%"], startAngle:90, padAngle:2, avoidLabelOverlap:true, data:outer,
-        label:{position:"outside", color:INK, fontSize:13, fontWeight:700, fontFamily:SANS, overflow:"none",
-          formatter:function(d){ return d.name+"  "+(d.value/total*100).toFixed(0)+"%"; }},
-        labelLine:{length:8, length2:10, lineStyle:{color:MUTED}}},
-      {name:"性别", type:"pie", radius:["26%","43%"], center:["50%","50%"], startAngle:90, padAngle:2, avoidLabelOverlap:true,
+      {name:"孩次", type:"pie", radius:MOB?["38%","54%"]:["46%","64%"], center:["50%","50%"], startAngle:90, padAngle:2, avoidLabelOverlap:true, data:outer,
+        label:{position:"outside", color:INK, fontSize:MOB?10.5:13, fontWeight:700, fontFamily:SANS, overflow:"none",
+          formatter:function(d){ var nm=(MOB&&d.name==="三孩及以上")?"三孩+":d.name; return nm+"  "+(d.value/total*100).toFixed(0)+"%"; }},
+        labelLine:{length:MOB?6:8, length2:MOB?8:10, lineStyle:{color:MUTED}}},
+      {name:"性别", type:"pie", radius:MOB?["20%","36%"]:["26%","43%"], center:["50%","50%"], startAngle:90, padAngle:2, avoidLabelOverlap:true,
         label:{show:false}, labelLine:{show:false}, data:inner}
     ],
     graphic:[
@@ -662,11 +671,11 @@ function ethnicLollipopOption(mode){
       if(year){ var n=d.n_year, nTxt=(n==null?"—":(n>=1e5?(n/1e4).toFixed(0)+" 万":n+" 人")); s+='<div style="font-size:12px;color:#8a8276">2020 当年出生 <span style="color:#2a241d">'+nTxt+'</span></div>'; if(n!=null&&n<8000) s+='<div style="font-size:11px;color:#9a8f7d;margin-top:2px">⚠ 当年样本较小，数值波动大</div>'; }
       else { var w=d.women; s+='<div style="font-size:12px;color:#8a8276">该民族妇女 <span style="color:#2a241d">'+(w>=1e4?(w/1e4).toFixed(0)+" 万":(w!=null?w+" 人":"—"))+'</span></div>'; }
       return s; }},
-    grid:{left:70, right:48, top:28, bottom:34},
-    xAxis:{type:"value", min:xmin, max:125, interval:5, axisLine:{show:false}, axisTick:{show:false},
+    grid:{left:isMob()?54:70, right:isMob()?34:48, top:28, bottom:34},
+    xAxis:{type:"value", min:xmin, max:125, interval:isMob()?10:5, axisLine:{show:false}, axisTick:{show:false},
       axisLabel:{color:MUTED}, splitLine:{lineStyle:{color:"rgba(245,223,201,.08)"}}},
     yAxis:{type:"category", data:names, inverse:true, axisTick:{show:false}, axisLine:{show:false},
-      axisLabel:{color:INK, fontSize:12, fontWeight:600}},
+      axisLabel:{color:INK, fontSize:isMob()?10.5:12, fontWeight:600}},
     series:[
       {name:"stem", type:"custom", silent:true, z:1, data:stemData,
         renderItem:function(params, api){
@@ -747,6 +756,12 @@ function initSexScroll(){
     setTimeout(function(){ list.forEach(function(c){ if(c) c.resize(); }); }, 60);
   }
   setupScrolly("#sc_sex .step", function(i){
+    if(isMob()){   // 移动端：三层同屏堆叠，各图显示其代表态（缺口图含缺口、趋势高亮、环为静息）
+      if(srbGapChart) srbGapChart.setOption(srbGapOption(2));
+      if(srbTrendChart) srbTrendChart.setOption(srbTrendOption(true));
+      if(ringChart) ringChart.setOption(ringOption(-1));
+      return;
+    }
     if(i<0) i=0;
     if(i<=1){                       // —— 层1：规模缺口 + 趋势 ——
       show("S");
@@ -789,8 +804,9 @@ function fertilityMapOption(step){
       label:hl?{color:"#241426",fontWeight:900,textBorderColor:"rgba(255,246,238,.86)",textBorderWidth:2}:undefined};
   });
 
-  var G=[];
+  var G=[], MOB=isMob();
 
+  if(!MOB){
   /* TFR含义注解框（左下，呼应参考图的说明牌） */
   G.push({type:"rect",left:"1.5%",bottom:"2.5%",z:0,
     shape:{width:228,height:88,r:10},
@@ -811,6 +827,12 @@ function fertilityMapOption(step){
       shadowBlur:16,shadowColor:"rgba(255,180,138,0.50)"}},
     {type:"text", x:106, y:69, style:{text:"总和生育率（TFR）",textAlign:"center",textVerticalAlign:"middle",fill:"rgba(255,196,155,.82)",font:"700 10.5px "+SANS}}
   ]});
+  } else {
+  /* 移动端：地图占满宽度，最低/最高 TOP5 交给下方卡片，图内仅留顶部"全国均值"小角标 */
+  G.push({type:"text", left:"center", top:"4px", z:8,
+    style:{text:"全国总和生育率（TFR） 1.30", textAlign:"center", fill:"#ffc49b", font:"800 13.5px "+SANS,
+      shadowBlur:14, shadowColor:"rgba(255,180,138,0.40)"}});
+  }
 
   function rankingPanel(opts){
     var x=0, y=0, w=204, h=opts.note?164:150;
@@ -837,6 +859,7 @@ function fertilityMapOption(step){
     return {type:"group",right:"1.2%",top:opts.top,z:8,children:kids};
   }
 
+  if(!MOB){
   G.push(rankingPanel({
     top:"1.5%", title:"生育率最低地区 TOP5", rows:sortedLow, valueColor:"#c8c5ff",
     note:lowTie.length ? lowTie.map(function(p){return p.name+" "+p.tfr.toFixed(2);}).join("、")+"，并列第5" : ""
@@ -845,6 +868,7 @@ function fertilityMapOption(step){
     top:lowTie.length?"39%":"40%", title:"生育率最高地区 TOP5", rows:sortedHigh, valueColor:"#ffad84",
     note:highTie.length ? highTie.map(function(p){return p.name+" "+p.tfr.toFixed(2);}).join("、")+"，并列第5" : ""
   }));
+  }
 
   return {
     backgroundColor:"transparent", textStyle:{fontFamily:SANS},
@@ -867,18 +891,20 @@ function fertilityMapOption(step){
                '<div>总和生育率 <b style="color:#ffc49b;font-size:15px">'+v+'</b></div>'+ 
                '<div style="color:rgba(245,223,201,.68);font-size:11.5px;margin-top:3px">'+diffTxt+'</div>';
     }},
-    visualMap:{type:"continuous", min:0.7, max:2.15, left:"4%", bottom:"102px", calculable:false, itemWidth:18, itemHeight:112,
+    visualMap:Object.assign({type:"continuous", min:0.7, max:2.15, calculable:false,
       text:["高","低"], textGap:8, textStyle:{color:"#ffc49b",fontSize:11,fontFamily:SANS,fontWeight:700},
       inRange:{color:["#b7b0ee","#d7c3ea","#efb4cf","#f7a889","#ef7452","#d6422f"]}},
+      MOB ? {orient:"horizontal", left:"center", bottom:"1%", itemWidth:14, itemHeight:150}
+          : {left:"4%", bottom:"102px", itemWidth:18, itemHeight:112}),
     graphic:G,
     series:[{
       type:"map", map:"china", roam:false, data:mapData,
-      layoutCenter:["38%","52%"], layoutSize:"86%",
+      layoutCenter:MOB?["50%","50%"]:["38%","52%"], layoutSize:MOB?"94%":"86%",
       itemStyle:{borderColor:"rgba(255,246,238,0.78)", borderWidth:0.9, areaColor:"#d7c3ea"},
       emphasis:{itemStyle:{areaColor:"#ffbe91", shadowBlur:20, shadowColor:"rgba(255,184,145,0.55)"},
         label:{show:false}},
       select:{disabled:true},
-      label:{show:true, color:"#261727", fontSize:9.4, fontWeight:700, fontFamily:SANS, lineHeight:13,
+      label:{show:!MOB, color:"#261727", fontSize:9.4, fontWeight:700, fontFamily:SANS, lineHeight:13,
         textBorderColor:"rgba(255,246,238,.72)", textBorderWidth:2,
         formatter:function(p){ return (p.data&&p.data.value!=null) ? ((p.data.short||p.name)+"\n"+(+p.data.value).toFixed(2)) : ""; }}
     }]
@@ -942,8 +968,9 @@ function educationParityOption(step){
         shadowColor:isEdge&&step>=1?"rgba(255,189,139,0.40)":"transparent"}};
   });
 
-  var G=[];
-  /* 将重点说明放在绘图区上方，给文字加底色，不再压住柱形 */
+  var G=[], MOB=isMob();
+  /* 将重点说明放在绘图区上方，给文字加底色，不再压住柱形（移动端去掉，2.21→1.41/口径/算法 卡片里已有）*/
+  if(!MOB){
   G.push({type:"rect",left:"14%",top:"2%",z:6,
     shape:{width:540,height:108,r:12},
     style:{fill:"rgba(6,11,24,0.88)",stroke:"rgba(255,213,158,0.58)",lineWidth:1.1,shadowBlur:22,shadowColor:"rgba(0,0,0,.35)"}});
@@ -960,6 +987,7 @@ function educationParityOption(step){
     style:{text:"口径：按当年有生育行为的育龄妇女测算，并非所有女性一生平均生育数。",fill:"rgba(245,223,201,.82)",font:"600 11.5px "+SANS}});
   G.push({type:"text",left:"17%",top:"28.5%",z:7,
     style:{text:"算法：一孩×1 + 二孩×2 + 三孩及以上×3 ÷ 该教育层次有生育行为的妇女人数。",fill:"#ffd59e",font:"700 11.5px "+SANS}});
+  }
 
   return {
     backgroundColor:"transparent", textStyle:{fontFamily:SANS},
@@ -976,12 +1004,12 @@ function educationParityOption(step){
                '<div>平均生育孩次 <b style="color:'+BAR_COLORS[i]+';font-size:16px">'+p.value+'</b></div>'+ 
                '<div style="color:rgba(245,223,201,.65);font-size:11px;margin-top:3px">阶段特征：'+anno+'</div>';
       }},
-    grid:{left:"12%", right:"5%", top:"34%", bottom:"18%"},
+    grid:MOB?{left:"15%", right:"6%", top:"11%", bottom:"15%"}:{left:"12%", right:"5%", top:"34%", bottom:"18%"},
     xAxis:{type:"category", data:eduData.map(function(d){return d.name;}),
       axisLine:{lineStyle:{color:FAINT}}, axisTick:{show:false},
-      axisLabel:{color:INK, fontSize:11.5, fontWeight:600, interval:0, lineHeight:18,
+      axisLabel:{color:INK, fontSize:MOB?10:11.5, fontWeight:600, interval:0, lineHeight:MOB?13:18,
         rich:{anno:{color:"rgba(245,223,201,.56)",fontSize:10,fontWeight:500,lineHeight:16}},
-        formatter:step>=2?function(v,i){ return v+"\n{anno|"+EDU_ANNO[i]+"}"; }:null}},
+        formatter:(step>=2&&!MOB)?function(v,i){ return v+"\n{anno|"+EDU_ANNO[i]+"}"; }:null}},
     yAxis:{type:"value", min:0, max:2.5,
       name:"折算平均生育孩次（孩）", nameLocation:"middle", nameGap:46,
       nameTextStyle:{color:MUTED,fontSize:11.5},
@@ -1040,6 +1068,7 @@ function initFmap(){ var el=document.getElementById("c_fmap"); if(!el||!window.C
 /* ---- 图11：法定婚龄之前的母亲（15–19 岁孩次堆叠柱）---- */
 var TEEN_P=["#604c8a","#9e5d78","#b9794e"];   /* 头胎 / 二胎 / 三孩及以上（暗紫罗兰→绛玫瑰→暗赭桃，暮色低饱和）*/
 function teenParityOption(step){
+  var MOB=isMob();
   var arr=window.DATA.teen_parity.by_age;
   var ages=arr.map(function(d){return d.age+" 岁";});
   var fade=(step>=1), p1op=fade?0.26:1;        /* 卡片2（合并）：淡去头胎，凸显非头胎 */
@@ -1051,7 +1080,8 @@ function teenParityOption(step){
     formatter:function(p){ return fade ? ("非头胎 "+p.data.nonfirst) : (""+p.data.total); }};
   return {
     backgroundColor:"transparent", textStyle:{fontFamily:SANS}, animationDurationUpdate:550, animationEasingUpdate:"cubicInOut",
-    legend:{top:0, right:0, itemWidth:14, itemHeight:10, textStyle:{color:MUTED,fontSize:12,fontFamily:SANS},
+    legend:{top:0, right:0, itemWidth:14, itemHeight:10, textStyle:{color:MUTED,fontSize:MOB?11:12,fontFamily:SANS},
+      formatter:MOB?function(n){return n.indexOf("三胎")===0?"三胎+":n;}:null,
       data:["头胎","二胎","三胎+（三胎及以上）"]},
     tooltip:Object.assign({},TT_STYLE,{trigger:"axis", axisPointer:{type:"shadow", shadowStyle:{color:"rgba(245,223,201,.08)"}}, formatter:function(ps){
       function est(v){ var e=v*10; if(e>=1e4) return (e/1e4).toFixed(1)+" 万"; if(e>=1000) return (Math.round(e/100)*100)+" 人"; return (Math.round(e/10)*10)+" 人"; }
@@ -1064,9 +1094,9 @@ function teenParityOption(step){
       s+='<div style="'+row+'">'+ttDot(TEEN_P[2])+'三胎及以上 '+a.p3+' <span style="'+mut+'">（全国约 '+est(a.p3)+'）</span></div>';
       s+='<div style="'+head+';font-size:12.5px;margin-top:5px;padding-top:5px;border-top:1px solid rgba(245,223,201,.16)">非头胎占 '+(nf/a.births*100).toFixed(1)+'%</div>';
       return s; }}),
-    grid:{left:56, right:24, top:52, bottom:54},
+    grid:{left:MOB?48:56, right:MOB?14:24, top:52, bottom:54},
     xAxis:{type:"category", data:ages, name:"母亲年龄", nameLocation:"middle", nameGap:32, nameTextStyle:{color:MUTED,fontSize:12},
-      axisTick:{show:false}, axisLine:{lineStyle:{color:FAINT}}, axisLabel:{color:INK, fontSize:13, fontWeight:600}},
+      axisTick:{show:false}, axisLine:{lineStyle:{color:FAINT}}, axisLabel:{color:INK, fontSize:MOB?11:13, fontWeight:600}},
     yAxis:{type:"value", name:"出生人数（样本内）", nameLocation:"end", nameRotate:0, nameGap:14, nameTextStyle:{color:MUTED,fontSize:12,align:"left",verticalAlign:"bottom"},
       axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:MUTED}, splitLine:{lineStyle:{color:"rgba(245,223,201,.10)"}}},
     series:[seg("p1",0), seg("p2",1), top]
@@ -1080,7 +1110,15 @@ function initTeen(){
   var chP=echarts.init(elP,null,{renderer:"svg"}); chP.setOption(teenParityOption(0)); charts.push(chP);
   var chU=echarts.init(elU,null,{renderer:"svg"}); chU.setOption(urbanRuralOption(0)); charts.push(chU);
   var gfxP=document.getElementById("gfx_teenp"), gfxU=document.getElementById("gfx_teenu"), uShown=false;
+  var mobDone=false;
+  function mobAll(){   // 移动端：两图同屏堆叠，进入即各画到 step0 全显示态
+    if(!isMob()||mobDone) return; mobDone=true;
+    chP.setOption(teenParityOption(0));
+    chU.resize(); chU.setOption(urbanRuralOption(0));
+  }
   setupScrolly("#sc_teen .step", function(i){
+    if(isMob()){ mobAll(); return; }
+    mobDone=false;
     if(i<=1){                                   // 图A
       gfxP.classList.add("on"); gfxU.classList.remove("on");
       chP.setOption(teenParityOption(i<0?0:i));
@@ -1122,6 +1160,7 @@ function initTeenMini(){ var el=document.getElementById("c_teenMini"); if(!el||!
 var TU_CITY="#5e7c9a", TU_RURAL="#bc6d4d";   /* 城市＝暗蓝 / 乡村＝暗赭（暮色低饱和）*/
 function urbanRuralOption(step){
   var d=window.DATA.teen_urbanrural; if(!d) return {};
+  var MOB=isMob();
   var rows=d.provinces.slice(); rows.push(d.national);
   rows.sort(function(a,b){return b.gap-a.gap;});       /* 全国按差距(10.03)落到自然位置 */
   var names=rows.map(function(r){return r.name;});
@@ -1132,14 +1171,14 @@ function urbanRuralOption(step){
   function isNat(nm){ return nm==="全国"; }
   var lineData=rows.map(function(r){ return {value:[r.city, r.rural, r.name], op:rowOp(r.name)}; });
   var cityDots=rows.map(function(r){ var nat=isNat(r.name), hi=focus&&focus[r.name];
-    return {value:[r.city, r.name], symbolSize:(nat?11:8),
+    return {value:[r.city, r.name], symbolSize:(nat?(MOB?9:11):(MOB?6:8)),
       itemStyle:{color:TU_CITY, opacity:rowOp(r.name), borderColor:PAPER, borderWidth:1.4},
       label:{show:(nat||hi), position:"left", distance:6, color:TU_CITY, fontSize:11, fontWeight:700, fontFamily:SANS,
         formatter:function(p){return p.value[0].toFixed(1);}}}; });
   var ruralDots=rows.map(function(r){ var nat=isNat(r.name), hi=focus&&focus[r.name];
-    return {value:[r.rural, r.name], symbolSize:(nat?11:8),
+    return {value:[r.rural, r.name], symbolSize:(nat?(MOB?9:11):(MOB?6:8)),
       itemStyle:{color:TU_RURAL, opacity:rowOp(r.name), borderColor:PAPER, borderWidth:1.4},
-      label:{show:true, position:"right", distance:6, color:TU_RURAL, fontSize:(nat||hi?11.5:10), fontWeight:(nat||hi?800:600), fontFamily:SANS,
+      label:{show:MOB?(nat||hi):true, position:"right", distance:6, color:TU_RURAL, fontSize:(nat||hi?11.5:10), fontWeight:(nat||hi?800:600), fontFamily:SANS,
         opacity:rowOp(r.name), formatter:function(p){return p.value[0].toFixed(1);}}}; });
   return {
     backgroundColor:"transparent", textStyle:{fontFamily:SANS}, animationDurationUpdate:500, animationEasingUpdate:"cubicInOut",
@@ -1150,12 +1189,12 @@ function urbanRuralOption(step){
       s+='<div style="color:'+INK+';font-size:12px">'+ttDot(TU_RURAL)+'乡村 '+r.rural.toFixed(2)+'‰</div>';
       s+='<div style="color:rgba(245,223,201,.55);font-size:11.5px;margin-top:3px">乡村约为城市的 '+(r.rural/r.city).toFixed(1)+' 倍</div>';
       return s; }}),
-    grid:{left:62, right:48, top:14, bottom:52},
-    xAxis:{type:"value", min:0, name:"15–19 岁妇女生育率（‰）", nameLocation:"middle", nameGap:32, nameTextStyle:{color:MUTED,fontSize:12},
+    grid:{left:MOB?44:62, right:MOB?30:48, top:14, bottom:52},
+    xAxis:{type:"value", min:0, name:"15–19 岁妇女生育率（‰）", nameLocation:"middle", nameGap:32, nameTextStyle:{color:MUTED,fontSize:MOB?11:12},
       axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:MUTED}, splitLine:{lineStyle:{color:"rgba(245,223,201,.08)"}}},
     yAxis:{type:"category", data:names, inverse:true, axisTick:{show:false}, axisLine:{show:false},
-      axisLabel:{fontSize:12, fontFamily:SANS, color:function(){return INK;},
-        formatter:function(v){return v==="全国"?("{nat|"+v+"}"):v;}, rich:{nat:{color:"#c87d97", fontWeight:800, fontSize:12.5}}}},
+      axisLabel:{fontSize:MOB?10:12, fontFamily:SANS, color:function(){return INK;}, margin:MOB?6:8,
+        formatter:function(v){return v==="全国"?("{nat|"+v+"}"):v;}, rich:{nat:{color:"#c87d97", fontWeight:800, fontSize:MOB?10.5:12.5}}}},
     series:[
       {name:"link", type:"custom", silent:true, z:1, data:lineData,
         renderItem:function(params, api){
@@ -1259,6 +1298,7 @@ function initEducationScroll(){
   charts.push(educationParityChart);
   
   setupScrolly("#sc_education .step", function(i){
+    if(isMob()){ educationParityChart.setOption(educationParityOption(2)); return; }  // 移动端：直接显示最终态（彩色柱＋更替线）
     if(i<0) i=0;
     educationParityChart.setOption(educationParityOption(i));
   });
@@ -1279,7 +1319,8 @@ function initEducationScroll(){
 })();
 
 var charts=[];
-window.addEventListener("resize",function(){charts.forEach(function(c){c.resize();}); customResizers.forEach(function(f){f();});});
+window.addEventListener("resize",function(){charts.forEach(function(c){c.resize();}); customResizers.forEach(function(f){f();});
+  var m=isMob(); if(m!==__wasMob){ __wasMob=m; __bpHooks.forEach(function(f){try{f();}catch(e){}}); }});
 document.addEventListener("DOMContentLoaded", function(){ initDecline(); initSrbBar(); initSrbTrend(); initRing(); initEthnic(); initSexScroll(); initParityMini(); initNewChartsScroll(); initEducationScroll(); initTeen(); initTeenMini(); initCoverButterflies(); });
 
 /* ---- 滚动叙事引擎：离视口中心最近的步骤为当前步 ----
@@ -1301,6 +1342,7 @@ function setupScrolly(stepSelector, onStep){
   }
   window.addEventListener("scroll", update, {passive:true});
   window.addEventListener("resize", update);
+  __bpHooks.push(function(){ if(cur!==-99) onStep(cur); });   // 跨窄/宽断点时按当前 step 重渲染（重应用移动端布局）
   update();
 }
 
@@ -1330,10 +1372,12 @@ function birthsOption(step, draw, peaks){
   var mp=[];
   // 1987 高峰 / 2023 谷底：随面积线一起出现（draw 为真即显示），不跟后面的卡片
   if(peaks>=1) mp.push({coord:["1987",2529],name:"1987 · 2529万",symbolSize:11,itemStyle:peakItem,label:{position:"right",distance:8}});
-  if(peaks>=2) mp.push({coord:["2023",901],name:"2023 · 901万",symbolSize:11,itemStyle:peakItem,label:{position:"bottom",distance:8}});
+  if(peaks>=2) mp.push({coord:["2023",901],name:"2023 · 901万",symbolSize:11,itemStyle:peakItem,label:{position:isMob()?"left":"bottom",distance:8}});
   // 政策药丸：custom 画真·胶囊（圆角=半高，按文字自适应宽，整颗可悬浮），z:10 置顶压住虚线 —— step>=2 出现
+  var MOB=isMob();
   var polData=[["1980",2700],["2013",2700],["2016",2400],["2021",2110]];
-  var polFull=polData.map(function(p){ var d=POL_DESC[p[0]]; return {x:p[0],y:p[1],title:d[0],desc:d[1]}; });
+  /* 窄屏：政策胶囊只显示年份（约 100px 的全称会互相重叠），完整说明留在悬浮提示与卡片 */
+  var polFull=polData.map(function(p){ var d=POL_DESC[p[0]]; return {x:p[0],y:p[1],title:MOB?d[0].split(" ")[0]:d[0],desc:d[1]}; });
   function pillW(t){ var w=0; for(var i=0;i<t.length;i++){ var c=t.charCodeAt(i); w+=(c>255?13:(c===32?5:7.2)); } return w; }
   var polSeries=(step>=1)?[{
     name:"政策", type:"custom", z:10, silent:true,
@@ -1497,7 +1541,17 @@ function initDecline(){
     setTimeout(function(){ ch.resize(); }, 60);   // 淡入后按可见尺寸重排
   }
 
+  var mobDone=false;
+  function mobAll(){   // 移动端：三图同屏堆叠，进入即各自画到最终态（峰谷/政策/拐点全显示），不走逐步动画
+    if(!isMob()||mobDone) return; mobDone=true;
+    drawnB=drawnR=drawnM=true;
+    chB.clear(); chB.resize(); chB.setOption(birthsOption(2,true,2));
+    chR.clear(); chR.resize(); chR.setOption(ridgeOption(2,true));
+    chM.clear(); chM.resize(); chM.setOption(marriageOption(2,true));
+  }
   setupScrolly("#sc_decline .step", function(i){
+    if(isMob()){ mobAll(); return; }
+    mobDone=false;
     if(i<0) i=0;
     if(i<=2){                       // —— 图1 ——
       show("B"); curB=i;
